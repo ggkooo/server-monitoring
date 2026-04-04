@@ -16,7 +16,8 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.hwmon'
     networks:
-      - monitoring-net
+      monitoring-infra:
+        ipv4_address: 172.20.0.11
     deploy:
       resources:
         limits:
@@ -34,7 +35,8 @@ services:
       - '-procfs=/host/proc'
       - '-config.path=/etc/process-exporter/all.yml'
     networks:
-      - monitoring-net
+      monitoring-infra:
+        ipv4_address: 172.20.0.12
 
   # ─── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
@@ -52,7 +54,8 @@ services:
       - node-exporter
       - process-exporter
     networks:
-      - monitoring-net
+      monitoring-infra:
+        ipv4_address: 172.20.0.13
 
   # ─── Laravel Reverb (WebSocket + metrics scheduler) ──────────────────────────
   backend:
@@ -63,7 +66,8 @@ services:
     depends_on:
       - prometheus
     networks:
-      - monitoring-net
+      monitoring-infra:
+        ipv4_address: 172.20.0.20
     restart: unless-stopped
 
   # ─── React frontend served by Nginx ──────────────────────────────────────────
@@ -79,12 +83,18 @@ services:
     depends_on:
       - backend
     networks:
-      - monitoring-net
+      monitoring-infra:
+        ipv4_address: 172.20.0.21
     restart: unless-stopped
 
 volumes:
   prometheus_data:
 
 networks:
-  monitoring-net:
+  monitoring-infra:
+    name: monitoring-infra
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
