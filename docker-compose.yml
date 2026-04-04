@@ -1,0 +1,89 @@
+services:
+
+  # ─── Node Exporter (métricas do host) ────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.hwmon'
+    networks:
+      - monitoring-net
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+
+  # ─── Process Exporter (métricas por processo) ─────────────────────────────────
+  process-exporter:
+    image: ncabatoff/process-exporter
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /proc:/host/proc
+      - ./monitoring/process-config.yml:/etc/process-exporter/all.yml:ro
+    command:
+      - '-procfs=/host/proc'
+      - '-config.path=/etc/process-exporter/all.yml'
+    networks:
+      - monitoring-net
+
+  # ─── Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/web-config.yml:/etc/prometheus/web-config.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.config.file=/etc/prometheus/web-config.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - node-exporter
+      - process-exporter
+    networks:
+      - monitoring-net
+
+  # ─── Laravel Reverb (WebSocket + metrics scheduler) ──────────────────────────
+  backend:
+    build:
+      context: ./b-server-monitoring
+    env_file:
+      - ./b-server-monitoring/.env
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+
+  # ─── React frontend served by Nginx ──────────────────────────────────────────
+  frontend:
+    build:
+      context: ./f-server-monitoring
+      args:
+        VITE_METRICS_WS_URL: ${VITE_METRICS_WS_URL}
+        VITE_METRICS_CHANNEL: ${VITE_METRICS_CHANNEL:-metrics}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - monitoring-net
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+
+networks:
+  monitoring-net:
+    driver: bridge
