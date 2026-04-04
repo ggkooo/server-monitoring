@@ -16,8 +16,8 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.hwmon'
     networks:
-      monitoring-infra:
-        ipv4_address: 172.20.0.11
+      gb_infra:
+        ipv4_address: 172.18.0.25
     deploy:
       resources:
         limits:
@@ -35,8 +35,8 @@ services:
       - '-procfs=/host/proc'
       - '-config.path=/etc/process-exporter/all.yml'
     networks:
-      monitoring-infra:
-        ipv4_address: 172.20.0.12
+      gb_infra:
+        ipv4_address: 172.18.0.26
 
   # ─── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
@@ -54,8 +54,8 @@ services:
       - node-exporter
       - process-exporter
     networks:
-      monitoring-infra:
-        ipv4_address: 172.20.0.13
+      gb_infra:
+        ipv4_address: 172.18.0.27
 
   # ─── Laravel Reverb (WebSocket + metrics scheduler) ──────────────────────────
   backend:
@@ -66,8 +66,8 @@ services:
     depends_on:
       - prometheus
     networks:
-      monitoring-infra:
-        ipv4_address: 172.20.0.20
+      gb_infra:
+        ipv4_address: 172.18.0.28
     restart: unless-stopped
 
   # ─── React frontend served by Nginx ──────────────────────────────────────────
@@ -77,24 +77,19 @@ services:
       args:
         VITE_METRICS_WS_URL: ${VITE_METRICS_WS_URL}
         VITE_METRICS_CHANNEL: ${VITE_METRICS_CHANNEL:-metrics}
-    ports:
-      - "80:80"
-      - "443:443"
+    expose:
+      - "80"
     depends_on:
       - backend
     networks:
-      monitoring-infra:
-        ipv4_address: 172.20.0.21
+      gb_infra:
+        ipv4_address: 172.18.0.29
     restart: unless-stopped
 
 volumes:
   prometheus_data:
 
 networks:
-  monitoring-infra:
-    name: monitoring-infra
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/24
-          gateway: 172.20.0.1
+  gb_infra:
+    external: true
+
