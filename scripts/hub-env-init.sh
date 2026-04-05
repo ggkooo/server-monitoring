@@ -13,7 +13,6 @@ APP_URL="http://localhost"
 PROMETHEUS_USERNAME=""
 PROMETHEUS_PASSWORD=""
 PROMETHEUS_PASSWORD_HASH=""
-PROMETHEUS_PASSWORD_HASH_B64=""
 REVERB_APP_ID=""
 REVERB_APP_KEY=""
 REVERB_APP_SECRET=""
@@ -37,8 +36,6 @@ Options:
   --prom-user <username>   Prometheus basic auth username (default: auto-generated)
   --prom-pass <password>   Prometheus basic auth password (default: auto-generated)
   --prom-pass-hash <hash>  Prometheus bcrypt hash (default: auto-generated from password)
-  --prom-pass-hash-b64 <b64>
-                           Prometheus bcrypt hash in base64 (default: derived)
   --reverb-app-id <id>     Reverb app ID (default: auto-generated)
   --reverb-app-key <key>   Reverb app key (default: auto-generated)
   --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
@@ -84,10 +81,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --prom-pass-hash)
       PROMETHEUS_PASSWORD_HASH="${2:?Missing value for --prom-pass-hash}"
-      shift 2
-      ;;
-    --prom-pass-hash-b64)
-      PROMETHEUS_PASSWORD_HASH_B64="${2:?Missing value for --prom-pass-hash-b64}"
       shift 2
       ;;
     --reverb-app-id)
@@ -141,10 +134,6 @@ generate_bcrypt_hash() {
     | tr -d ':\n'
 }
 
-to_base64() {
-  printf '%s' "$1" | base64 | tr -d '\n'
-}
-
 escape_sed_replacement() {
   local value="$1"
   value="${value//\\/\\\\}"
@@ -190,10 +179,6 @@ if [[ -z "$PROMETHEUS_PASSWORD_HASH" ]]; then
   PROMETHEUS_PASSWORD_HASH="$(generate_bcrypt_hash "$PROMETHEUS_PASSWORD")"
 fi
 
-if [[ -z "$PROMETHEUS_PASSWORD_HASH_B64" ]]; then
-  PROMETHEUS_PASSWORD_HASH_B64="$(to_base64 "$PROMETHEUS_PASSWORD_HASH")"
-fi
-
 if [[ -z "$PROMETHEUS_USERNAME" ]]; then
   PROMETHEUS_USERNAME="prom_$(random_alnum 10)"
 fi
@@ -211,7 +196,6 @@ upsert_env_var "$OUTPUT_FILE" "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
 upsert_env_var "$OUTPUT_FILE" "PROMETHEUS_USERNAME" "$PROMETHEUS_USERNAME"
 upsert_env_var "$OUTPUT_FILE" "PROMETHEUS_PASSWORD" "$PROMETHEUS_PASSWORD"
 upsert_env_var "$OUTPUT_FILE" "PROMETHEUS_PASSWORD_HASH" "$PROMETHEUS_PASSWORD_HASH"
-upsert_env_var "$OUTPUT_FILE" "PROMETHEUS_PASSWORD_HASH_B64" "$PROMETHEUS_PASSWORD_HASH_B64"
 
 cat <<EOF
 Updated ${OUTPUT_FILE} with fresh hub credentials:
