@@ -14,9 +14,6 @@ APP_DEBUG="false"
 APP_URL="http://localhost"
 PROMETHEUS_USERNAME=""
 PROMETHEUS_PASSWORD=""
-REVERB_APP_ID=""
-REVERB_APP_KEY=""
-REVERB_APP_SECRET=""
 CREDENTIALS_FILE=""
 RUN_PULL="true"
 RUN_UP="false"
@@ -39,9 +36,6 @@ Options:
   --network-name <name>    Docker network name (default: server-monitoring-network)
   --prom-user <username>   Prometheus username (default: auto-generated)
   --prom-pass <password>   Prometheus password (default: auto-generated)
-  --reverb-app-id <id>     Reverb app ID (default: from releases manifest or auto-generated)
-  --reverb-app-key <key>   Reverb app key (default: from releases manifest or auto-generated)
-  --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
   --credentials-file <path>
                            Save generated credentials to a separate file
   --up                     Run 'docker compose ... up -d' after pull
@@ -96,18 +90,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --prom-pass)
       PROMETHEUS_PASSWORD="${2:?Missing value for --prom-pass}"
-      shift 2
-      ;;
-    --reverb-app-id)
-      REVERB_APP_ID="${2:?Missing value for --reverb-app-id}"
-      shift 2
-      ;;
-    --reverb-app-key)
-      REVERB_APP_KEY="${2:?Missing value for --reverb-app-key}"
-      shift 2
-      ;;
-    --reverb-app-secret)
-      REVERB_APP_SECRET="${2:?Missing value for --reverb-app-secret}"
       shift 2
       ;;
     --credentials-file)
@@ -211,28 +193,6 @@ if [[ ! -f "$ENV_FILE" ]]; then
   : >"$ENV_FILE"
 fi
 
-# Load per-tag release manifest to get the REVERB key baked into the pre-built frontend image.
-# Only fills in vars that have not been explicitly set via CLI.
-if [[ -z "$REVERB_APP_KEY" || -z "$REVERB_APP_ID" ]]; then
-  manifest_url="https://raw.githubusercontent.com/${REPO}/${REF}/releases/${IMAGE_TAG}.env"
-  manifest_tmp="$(mktemp)"
-  if curl -fsSL "$manifest_url" -o "$manifest_tmp" 2>/dev/null; then
-    echo "Loaded release manifest for ${IMAGE_TAG}."
-    while IFS='=' read -r key val; do
-      [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
-      key="${key%%[[:space:]]*}"
-      val="${val%%[[:space:]]*}"
-      case "$key" in
-        REVERB_APP_KEY) [[ -z "$REVERB_APP_KEY" ]] && REVERB_APP_KEY="$val" ;;
-        REVERB_APP_ID)  [[ -z "$REVERB_APP_ID"  ]] && REVERB_APP_ID="$val"  ;;
-      esac
-    done <"$manifest_tmp"
-  else
-    echo "No release manifest found for ${IMAGE_TAG} — REVERB credentials will be auto-generated."
-  fi
-  rm -f "$manifest_tmp"
-fi
-
 if [[ -z "$PROMETHEUS_USERNAME" ]]; then
   PROMETHEUS_USERNAME="prom_$(random_alnum 10)"
 fi
@@ -241,9 +201,9 @@ if [[ -z "$PROMETHEUS_PASSWORD" ]]; then
   PROMETHEUS_PASSWORD="$(random_alnum 24)"
 fi
 
-[[ -z "$REVERB_APP_ID" ]]     && REVERB_APP_ID="$(random_id)"
-[[ -z "$REVERB_APP_KEY" ]]    && REVERB_APP_KEY="$(random_alnum 20)"
-[[ -z "$REVERB_APP_SECRET" ]] && REVERB_APP_SECRET="$(random_alnum 20)"
+REVERB_APP_ID="$(random_id)"
+REVERB_APP_KEY="$(random_alnum 20)"
+REVERB_APP_SECRET="$(random_alnum 20)"
 
 upsert_env_var "$ENV_FILE" "DOCKERHUB_USER" "$DOCKERHUB_USER"
 upsert_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
