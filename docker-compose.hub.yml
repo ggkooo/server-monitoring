@@ -113,6 +113,9 @@ services:
     image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-frontend:${IMAGE_TAG:-v1.0.1}
     container_name: server-monitoring-frontend
     restart: unless-stopped
+    environment:
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY is required}
+      VITE_METRICS_CHANNEL: ${METRICS_BROADCAST_CHANNEL:-metrics}
     expose:
       - '80'
     depends_on:
