@@ -12,6 +12,9 @@ APP_DEBUG="false"
 APP_URL="http://localhost"
 PROMETHEUS_USERNAME=""
 PROMETHEUS_PASSWORD=""
+REVERB_APP_ID=""
+REVERB_APP_KEY=""
+REVERB_APP_SECRET=""
 
 usage() {
   cat <<'EOF'
@@ -27,6 +30,9 @@ Options:
   --network-name <name>    Docker network name (default: server-monitoring-network)
   --prom-user <username>   Prometheus basic auth username (default: auto-generated)
   --prom-pass <password>   Prometheus basic auth password (default: auto-generated)
+  --reverb-app-id <id>     Reverb app ID (default: from releases manifest or auto-generated)
+  --reverb-app-key <key>   Reverb app key (default: from releases manifest or auto-generated)
+  --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
   --force                  Overwrite output file if it does not exist from template
   -h, --help               Show this help message
 
@@ -65,6 +71,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --prom-pass)
       PROMETHEUS_PASSWORD="${2:?Missing value for --prom-pass}"
+      shift 2
+      ;;
+    --reverb-app-id)
+      REVERB_APP_ID="${2:?Missing value for --reverb-app-id}"
+      shift 2
+      ;;
+    --reverb-app-key)
+      REVERB_APP_KEY="${2:?Missing value for --reverb-app-key}"
+      shift 2
+      ;;
+    --reverb-app-secret)
+      REVERB_APP_SECRET="${2:?Missing value for --reverb-app-secret}"
       shift 2
       ;;
     --force)
@@ -131,9 +149,26 @@ elif [[ "$FORCE" == "true" && -f ".env.hub.example" ]]; then
   cp .env.hub.example "$OUTPUT_FILE"
 fi
 
-REVERB_APP_ID="$(random_id)"
-REVERB_APP_KEY="$(random_alnum 20)"
-REVERB_APP_SECRET="$(random_alnum 20)"
+# Load per-tag release manifest so the REVERB key matches the pre-built frontend image.
+if [[ -z "$REVERB_APP_KEY" || -z "$REVERB_APP_ID" ]]; then
+  manifest="releases/${IMAGE_TAG}.env"
+  if [[ -f "$manifest" ]]; then
+    echo "Loading release manifest from ${manifest}..."
+    while IFS='=' read -r key val; do
+      [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+      key="${key%%[[:space:]]*}"
+      val="${val%%[[:space:]]*}"
+      case "$key" in
+        REVERB_APP_KEY) [[ -z "$REVERB_APP_KEY" ]] && REVERB_APP_KEY="$val" ;;
+        REVERB_APP_ID)  [[ -z "$REVERB_APP_ID"  ]] && REVERB_APP_ID="$val"  ;;
+      esac
+    done <"$manifest"
+  fi
+fi
+
+[[ -z "$REVERB_APP_ID" ]]     && REVERB_APP_ID="$(random_id)"
+[[ -z "$REVERB_APP_KEY" ]]    && REVERB_APP_KEY="$(random_alnum 20)"
+[[ -z "$REVERB_APP_SECRET" ]] && REVERB_APP_SECRET="$(random_alnum 20)"
 
 if [[ -z "$PROMETHEUS_PASSWORD" ]]; then
   PROMETHEUS_PASSWORD="$(random_alnum 24)"
