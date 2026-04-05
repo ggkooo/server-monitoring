@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO="ggkooo/server-monitoring"
-REF="main"
+REF="master"
 COMPOSE_FILE="docker-compose.hub.yml"
 ENV_FILE=".env.hub"
 DOCKERHUB_USER="giordanoberwig"
@@ -27,7 +27,7 @@ credentials, then runs docker compose pull (and optionally up -d).
 
 Options:
   --repo <owner/repo>      GitHub repo (default: ggkooo/server-monitoring)
-  --ref <git-ref>          Git ref/branch/tag (default: main)
+  --ref <git-ref>          Git ref/branch/tag (default: master)
   --compose-file <path>    Compose output path (default: docker-compose.hub.yml)
   --env-file <path>        Env output path (default: .env.hub)
   --dockerhub-user <user>  Docker Hub username (default: giordanoberwig)
@@ -168,10 +168,26 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-COMPOSE_URL="https://raw.githubusercontent.com/${REPO}/${REF}/docker-compose.hub.yml"
+download_compose() {
+  local ref="$1"
+  local url="https://raw.githubusercontent.com/${REPO}/${ref}/docker-compose.hub.yml"
 
-echo "Downloading compose file from ${COMPOSE_URL}..."
-curl -fsSL "$COMPOSE_URL" -o "$COMPOSE_FILE"
+  echo "Downloading compose file from ${url}..."
+  curl -fsSL "$url" -o "$COMPOSE_FILE"
+}
+
+if ! download_compose "$REF"; then
+  if [[ "$REF" == "main" ]]; then
+    echo "Primary ref failed. Trying fallback ref 'master'..."
+    download_compose "master"
+  elif [[ "$REF" == "master" ]]; then
+    echo "Primary ref failed. Trying fallback ref 'main'..."
+    download_compose "main"
+  else
+    echo "Error: could not download docker-compose.hub.yml from ref '${REF}'." >&2
+    exit 1
+  fi
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   : >"$ENV_FILE"
