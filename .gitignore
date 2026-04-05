@@ -2,8 +2,6 @@
 .env
 .env.local
 .env.*.local
-.env.hub
-credentials.txt
 
 # Editor settings
 .vscode/
