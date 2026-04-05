@@ -3,11 +3,11 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile.edge
-    container_name: ggko-server-monitoring-edge-nginx
+    container_name: server-monitoring-edge-nginx
     restart: unless-stopped
     depends_on:
       - frontend
     ports:
       - "80:80"
     networks:
-      - gb_infra
+      - server_monitoring_network
