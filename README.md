@@ -177,13 +177,28 @@ This publishes:
 
 Consumer workflow:
 
-1. Download `docker-compose.hub.yml`.
-2. Create an environment file with credentials:
+1. Run a single bootstrap command:
 
-	cp .env.hub.example .env.hub
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash
 
-	# Edit .env.hub and set your own REVERB and PROMETHEUS credentials
-2. Run:
+	# It will:
+	# - download docker-compose.hub.yml
+	# - create/update .env.hub
+	# - generate REVERB_APP_* and PROMETHEUS_USERNAME/PROMETHEUS_PASSWORD
+	# - run docker compose pull
+
+	# Optional: start containers immediately after pull
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --up
+
+	# Optional: customize Docker Hub source and tag
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --dockerhub-user <dockerhub-user> --image-tag v1.0.1
+
+	# Optional: save generated credentials to a separate local file
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --credentials-file credentials.txt
+
+	# Keep this backup file private (it contains secrets)
+
+2. If you did not use `--up`, start the stack:
 
 	docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
 
