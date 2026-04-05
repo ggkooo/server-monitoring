@@ -3,6 +3,7 @@ services:
   # ─── Node Exporter (métricas do host) ────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
+    container_name: ggko-server-monitoring-node-exporter
     restart: unless-stopped
     privileged: true
     volumes:
@@ -26,6 +27,7 @@ services:
   # ─── Process Exporter (métricas por processo) ─────────────────────────────────
   process-exporter:
     image: ncabatoff/process-exporter
+    container_name: ggko-server-monitoring-process-exporter
     restart: unless-stopped
     privileged: true
     volumes:
@@ -41,6 +43,7 @@ services:
   # ─── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
+    container_name: ggko-server-monitoring-prometheus
     restart: unless-stopped
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -61,6 +64,7 @@ services:
   backend:
     build:
       context: ./b-server-monitoring
+    container_name: ggko-server-monitoring-backend
     env_file:
       - ./b-server-monitoring/.env
     depends_on:
@@ -77,6 +81,7 @@ services:
       args:
         VITE_METRICS_WS_URL: ${VITE_METRICS_WS_URL}
         VITE_METRICS_CHANNEL: ${VITE_METRICS_CHANNEL:-metrics}
+    container_name: ggko-server-monitoring-frontend
     expose:
       - "80"
     depends_on:
