@@ -54,11 +54,14 @@ EOF
   echo "Saved release manifest to ${RELEASES_FILE}"
 fi
 
-VITE_WS_URL=""
-echo "Building frontend image (VITE_METRICS_WS_URL injected at runtime via env.js)..."
+VITE_WS_URL="/app/${REVERB_APP_KEY}?protocol=7&client=js&version=8.4.0&flash=false"
+echo "REVERB_APP_KEY for this build: ${REVERB_APP_KEY}"
+
+echo "Building frontend image..."
 docker build \
   -t "${DOCKERHUB_USER}/server-monitoring-frontend:${TAG}" \
   -f f-server-monitoring/Dockerfile \
+  --build-arg VITE_METRICS_WS_URL="${VITE_WS_URL}" \
   --build-arg VITE_METRICS_CHANNEL="metrics" \
   f-server-monitoring
 
