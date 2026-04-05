@@ -186,13 +186,27 @@ Consumer workflow:
 	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/docker-compose.hub.yml -o docker-compose.hub.yml
 	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/.env.hub.example -o .env.hub
 
-2. Edit credentials in `.env.hub`:
+2. Use this standard `.env.hub` example (functional baseline):
 
-	- REVERB_APP_ID
-	- REVERB_APP_KEY
-	- REVERB_APP_SECRET
-	- PROMETHEUS_USERNAME
-	- PROMETHEUS_PASSWORD
+```env
+# Docker Hub source
+DOCKERHUB_USER=giordanoberwig
+IMAGE_TAG=v1.0.0
+APP_PORT=8991
+DOCKER_NETWORK_NAME=server-monitoring-network
+
+# Required credentials
+REVERB_APP_ID=499884
+REVERB_APP_KEY=lbvk6nsfyjta5at2mar1
+REVERB_APP_SECRET=rdsummgftmqdorc0k5dm
+PROMETHEUS_USERNAME=ggko
+PROMETHEUS_PASSWORD=Prom@2026!Monitor
+
+# Optional runtime flags
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=http://localhost
+```
 
 3. Pull and run:
 
@@ -203,7 +217,7 @@ Consumer workflow:
 
 	docker compose --env-file .env.hub -f docker-compose.hub.yml logs -f
 
-3. Open dashboard (default port 8991):
+5. Open dashboard (default port 8991):
 
 	http://localhost:8991
 	
@@ -215,6 +229,40 @@ Notes:
 
 - Hub network name uses `server-monitoring-network` by default.
 - You can override it with `DOCKER_NETWORK_NAME` in `.env.hub`.
+
+### Clean Install (remove everything and pull again) 🧹
+
+If you need a fresh install from zero:
+
+```bash
+docker rm -f \
+	ggko-server-monitoring-edge-nginx \
+	ggko-server-monitoring-frontend \
+	ggko-server-monitoring-backend \
+	ggko-server-monitoring-prometheus \
+	ggko-server-monitoring-process-exporter \
+	ggko-server-monitoring-node-exporter \
+	server-monitoring-edge-nginx \
+	server-monitoring-frontend \
+	server-monitoring-backend \
+	server-monitoring-prometheus \
+	server-monitoring-process-exporter \
+	server-monitoring-node-exporter 2>/dev/null || true
+
+docker rmi -f \
+	giordanoberwig/server-monitoring-frontend:v1.0.0 \
+	giordanoberwig/server-monitoring-backend:v1.0.0 \
+	giordanoberwig/server-monitoring-prometheus:v1.0.0 \
+	giordanoberwig/server-monitoring-process-exporter:v1.0.0 \
+	giordanoberwig/server-monitoring-edge-nginx:v1.0.0 \
+	prom/node-exporter:latest 2>/dev/null || true
+
+docker volume rm server-monitoring_prometheus_data 2>/dev/null || true
+docker network rm server-monitoring-network ggko-server-monitoring-net 2>/dev/null || true
+
+docker compose --env-file .env.hub -f docker-compose.hub.yml pull
+docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
+```
 
 ### Rebuild after changes 🔄
 
