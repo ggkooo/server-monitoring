@@ -17,7 +17,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.hwmon'
     networks:
-      gb_infra:
+      server_monitoring_network:
         ipv4_address: 172.18.0.25
     deploy:
       resources:
@@ -37,7 +37,7 @@ services:
       - '-procfs=/host/proc'
       - '-config.path=/etc/process-exporter/all.yml'
     networks:
-      gb_infra:
+      server_monitoring_network:
         ipv4_address: 172.18.0.26
 
   # ─── Prometheus ───────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ services:
       - node-exporter
       - process-exporter
     networks:
-      gb_infra:
+      server_monitoring_network:
         ipv4_address: 172.18.0.27
 
   # ─── Laravel Reverb (WebSocket + metrics scheduler) ──────────────────────────
@@ -70,7 +70,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      gb_infra:
+      server_monitoring_network:
         ipv4_address: 172.18.0.28
     restart: unless-stopped
 
@@ -87,7 +87,7 @@ services:
     depends_on:
       - backend
     networks:
-      gb_infra:
+      server_monitoring_network:
         ipv4_address: 172.18.0.29
     restart: unless-stopped
 
@@ -95,6 +95,6 @@ volumes:
   prometheus_data:
 
 networks:
-  gb_infra:
+  server_monitoring_network:
     external: true
 

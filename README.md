@@ -158,6 +158,8 @@ Prometheus web auth configuration:
 
 You can publish prebuilt images so users only pull images and run the stack.
 
+Default stable tag for Hub deployment: `v1.0.0`.
+
 Publisher workflow:
 
 1. Login to Docker Hub:
@@ -166,26 +168,40 @@ Publisher workflow:
 
 2. Publish all images:
 
-	./scripts/dockerhub-publish.sh <dockerhub-user> <tag>
+	./scripts/dockerhub-publish.sh <dockerhub-user> v1.0.0
 
 This publishes:
 
-- <dockerhub-user>/server-monitoring-frontend:<tag>
-- <dockerhub-user>/server-monitoring-backend:<tag>
-- <dockerhub-user>/server-monitoring-prometheus:<tag>
-- <dockerhub-user>/server-monitoring-process-exporter:<tag>
+- <dockerhub-user>/server-monitoring-frontend:v1.0.0
+- <dockerhub-user>/server-monitoring-backend:v1.0.0
+- <dockerhub-user>/server-monitoring-prometheus:v1.0.0
+- <dockerhub-user>/server-monitoring-process-exporter:v1.0.0
+- <dockerhub-user>/server-monitoring-edge-nginx:v1.0.0
 
 Consumer workflow:
 
-1. Download `docker-compose.hub.yml`.
-2. Create an environment file with credentials:
+1. Quick download (server):
 
-	cp .env.hub.example .env.hub
+	mkdir -p ~/server-monitoring && cd ~/server-monitoring
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/docker-compose.hub.yml -o docker-compose.hub.yml
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/.env.hub.example -o .env.hub
 
-	# Edit .env.hub and set your own REVERB and PROMETHEUS credentials
-2. Run:
+2. Edit credentials in `.env.hub`:
 
+	- REVERB_APP_ID
+	- REVERB_APP_KEY
+	- REVERB_APP_SECRET
+	- PROMETHEUS_USERNAME
+	- PROMETHEUS_PASSWORD
+
+3. Pull and run:
+
+	docker compose --env-file .env.hub -f docker-compose.hub.yml pull
 	docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
+
+4. Follow logs:
+
+	docker compose --env-file .env.hub -f docker-compose.hub.yml logs -f
 
 3. Open dashboard (default port 8991):
 
@@ -194,6 +210,11 @@ Consumer workflow:
    Or use your configured `APP_PORT` from `.env.hub`:
    
 	http://your-server-ip:${APP_PORT}
+
+Notes:
+
+- Hub network name uses `server-monitoring-network` by default.
+- You can override it with `DOCKER_NETWORK_NAME` in `.env.hub`.
 
 ### Rebuild after changes 🔄
 

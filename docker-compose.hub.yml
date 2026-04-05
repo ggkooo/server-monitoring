@@ -15,20 +15,20 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.hwmon'
     networks:
-      - gb_infra
+      - server_monitoring_network
 
   process-exporter:
-    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-process-exporter:${IMAGE_TAG:-v1.0.2}
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-process-exporter:${IMAGE_TAG:-v1.0.0}
     container_name: ggko-server-monitoring-process-exporter
     restart: unless-stopped
     privileged: true
     volumes:
       - /proc:/host/proc
     networks:
-      - gb_infra
+      - server_monitoring_network
 
   prometheus:
-    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-prometheus:${IMAGE_TAG:-v1.0.2}
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-prometheus:${IMAGE_TAG:-v1.0.0}
     container_name: ggko-server-monitoring-prometheus
     restart: unless-stopped
     volumes:
@@ -41,10 +41,10 @@ services:
       - node-exporter
       - process-exporter
     networks:
-      - gb_infra
+      - server_monitoring_network
 
   backend:
-    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-backend:${IMAGE_TAG:-v1.0.2}
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-backend:${IMAGE_TAG:-v1.0.0}
     container_name: ggko-server-monitoring-backend
     restart: unless-stopped
     environment:
@@ -107,10 +107,10 @@ services:
     depends_on:
       - prometheus
     networks:
-      - gb_infra
+      - server_monitoring_network
 
   frontend:
-    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-frontend:${IMAGE_TAG:-v1.0.2}
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-frontend:${IMAGE_TAG:-v1.0.0}
     container_name: ggko-server-monitoring-frontend
     restart: unless-stopped
     expose:
@@ -118,10 +118,10 @@ services:
     depends_on:
       - backend
     networks:
-      - gb_infra
+      - server_monitoring_network
 
   edge-nginx:
-    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-edge-nginx:${IMAGE_TAG:-v1.0.2}
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-edge-nginx:${IMAGE_TAG:-v1.0.0}
     container_name: ggko-server-monitoring-edge-nginx
     restart: unless-stopped
     ports:
@@ -129,12 +129,12 @@ services:
     depends_on:
       - frontend
     networks:
-      - gb_infra
+      - server_monitoring_network
 
 volumes:
   prometheus_data:
 
 networks:
-  gb_infra:
-    name: ${DOCKER_NETWORK_NAME:-ggko-server-monitoring-net}
+  server_monitoring_network:
+    name: ${DOCKER_NETWORK_NAME:-server-monitoring-network}
     driver: bridge

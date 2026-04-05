@@ -10,4 +10,4 @@ services:
     ports:
       - "80:80"
     networks:
-      - gb_infra
+      - server_monitoring_network

@@ -7,7 +7,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 DOCKERHUB_USER="$1"
-TAG="${2:-latest}"
+TAG="${2:-v1.0.0}"
 
 echo "Building frontend image..."
 docker build \
