@@ -183,8 +183,8 @@ Consumer workflow:
 
 	# It will:
 	# - download docker-compose.hub.yml
-	# - generate random REVERB_APP_* and PROMETHEUS_USERNAME/PROMETHEUS_PASSWORD
-	# - keep credentials ephemeral by default (no persisted .env.hub)
+	# - create/update .env.hub
+	# - generate REVERB_APP_* and PROMETHEUS_USERNAME/PROMETHEUS_PASSWORD
 	# - run docker compose pull
 
 	# Optional: start containers immediately after pull
@@ -198,20 +198,15 @@ Consumer workflow:
 
 	# Keep this backup file private (it contains secrets)
 
-	# Optional: persist env file on disk (not recommended for hardened deployments)
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash -s -- --persist-env --up
+2. If you did not use `--up`, start the stack:
 
-2. If you did not use `--up`, start the stack in the same bootstrap run:
-
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash -s -- --up
-
-	If you need manual docker compose lifecycle commands, use `--persist-env`.
+	docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
 
 3. Open dashboard (default port 8991):
 
 	http://localhost:8991
 	
-	Or use your configured `APP_PORT`:
+   Or use your configured `APP_PORT` from `.env.hub`:
    
 	http://your-server-ip:${APP_PORT}
 

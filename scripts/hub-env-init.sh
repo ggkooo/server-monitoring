@@ -20,11 +20,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/hub-env-init.sh [options]
 
-Create or update .env.hub with randomly generated REVERB credentials and Prometheus auth.
-
-Security note:
-  This script persists secrets to disk. Prefer scripts/hub-bootstrap.sh for
-  ephemeral credentials (no persisted env file by default).
+Create or update .env.hub with generated REVERB credentials and Prometheus auth.
 
 Options:
   --output <path>          Output env file path (default: .env.hub)
@@ -34,8 +30,8 @@ Options:
   --network-name <name>    Docker network name (default: server-monitoring-network)
   --prom-user <username>   Prometheus basic auth username (default: auto-generated)
   --prom-pass <password>   Prometheus basic auth password (default: auto-generated)
-  --reverb-app-id <id>     Reverb app ID (default: auto-generated)
-  --reverb-app-key <key>   Reverb app key (default: auto-generated)
+  --reverb-app-id <id>     Reverb app ID (default: from releases manifest or auto-generated)
+  --reverb-app-key <key>   Reverb app key (default: from releases manifest or auto-generated)
   --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
   --force                  Overwrite output file if it does not exist from template
   -h, --help               Show this help message
@@ -151,6 +147,23 @@ if [[ ! -f "$OUTPUT_FILE" ]]; then
   fi
 elif [[ "$FORCE" == "true" && -f ".env.hub.example" ]]; then
   cp .env.hub.example "$OUTPUT_FILE"
+fi
+
+# Load per-tag release manifest so the REVERB key matches the pre-built frontend image.
+if [[ -z "$REVERB_APP_KEY" || -z "$REVERB_APP_ID" ]]; then
+  manifest="releases/${IMAGE_TAG}.env"
+  if [[ -f "$manifest" ]]; then
+    echo "Loading release manifest from ${manifest}..."
+    while IFS='=' read -r key val; do
+      [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+      key="${key%%[[:space:]]*}"
+      val="${val%%[[:space:]]*}"
+      case "$key" in
+        REVERB_APP_KEY) [[ -z "$REVERB_APP_KEY" ]] && REVERB_APP_KEY="$val" ;;
+        REVERB_APP_ID)  [[ -z "$REVERB_APP_ID"  ]] && REVERB_APP_ID="$val"  ;;
+      esac
+    done <"$manifest"
+  fi
 fi
 
 [[ -z "$REVERB_APP_ID" ]]     && REVERB_APP_ID="$(random_id)"

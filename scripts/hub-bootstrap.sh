@@ -5,8 +5,6 @@ REPO="ggkooo/server-monitoring"
 REF="master"
 COMPOSE_FILE="docker-compose.hub.yml"
 ENV_FILE=".env.hub"
-PERSIST_ENV="false"
-SHOW_SECRETS="false"
 DOCKERHUB_USER="giordanoberwig"
 IMAGE_TAG="v1.0.1"
 APP_PORT="8991"
@@ -27,26 +25,22 @@ usage() {
   cat <<'EOF'
 Usage: hub-bootstrap.sh [options]
 
-Downloads docker-compose.hub.yml, generates random credentials, and runs
-docker compose pull (and optionally up -d) using an ephemeral env file.
-
-By default, credentials are NOT persisted to disk.
+Downloads docker-compose.hub.yml, creates/updates .env.hub with generated
+credentials, then runs docker compose pull (and optionally up -d).
 
 Options:
   --repo <owner/repo>      GitHub repo (default: ggkooo/server-monitoring)
   --ref <git-ref>          Git ref/branch/tag (default: master)
   --compose-file <path>    Compose output path (default: docker-compose.hub.yml)
   --env-file <path>        Env output path (default: .env.hub)
-  --persist-env            Persist generated env file to --env-file
-  --show-secrets           Print generated secrets to stdout (not recommended)
   --dockerhub-user <user>  Docker Hub username (default: giordanoberwig)
   --image-tag <tag>        Image tag (default: v1.0.1)
   --app-port <port>        Host port for edge nginx (default: 8991)
   --network-name <name>    Docker network name (default: server-monitoring-network)
   --prom-user <username>   Prometheus username (default: auto-generated)
   --prom-pass <password>   Prometheus password (default: auto-generated)
-  --reverb-app-id <id>     Reverb app ID (default: auto-generated)
-  --reverb-app-key <key>   Reverb app key (default: auto-generated)
+  --reverb-app-id <id>     Reverb app ID (default: from releases manifest or auto-generated)
+  --reverb-app-key <key>   Reverb app key (default: from releases manifest or auto-generated)
   --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
   --credentials-file <path>
                            Save generated credentials to a separate file
@@ -58,7 +52,6 @@ Examples:
   bash hub-bootstrap.sh
   bash hub-bootstrap.sh --dockerhub-user myuser --image-tag v1.0.1 --up
   bash hub-bootstrap.sh --ref v1.0.1 --prom-user ggko --prom-pass 'StrongPass!123'
-  bash hub-bootstrap.sh --up --persist-env
   bash hub-bootstrap.sh --credentials-file credentials.txt
 EOF
 }
@@ -80,14 +73,6 @@ while [[ $# -gt 0 ]]; do
     --env-file)
       ENV_FILE="${2:?Missing value for --env-file}"
       shift 2
-      ;;
-    --persist-env)
-      PERSIST_ENV="true"
-      shift
-      ;;
-    --show-secrets)
-      SHOW_SECRETS="true"
-      shift
       ;;
     --dockerhub-user)
       DOCKERHUB_USER="${2:?Missing value for --dockerhub-user}"
@@ -222,23 +207,30 @@ if ! download_compose "$REF"; then
   fi
 fi
 
-RUNTIME_ENV_FILE=""
-cleanup_runtime_env() {
-  if [[ -n "$RUNTIME_ENV_FILE" && -f "$RUNTIME_ENV_FILE" && "$PERSIST_ENV" != "true" ]]; then
-    rm -f "$RUNTIME_ENV_FILE"
-  fi
-}
-trap cleanup_runtime_env EXIT
+if [[ ! -f "$ENV_FILE" ]]; then
+  : >"$ENV_FILE"
+fi
 
-if [[ "$PERSIST_ENV" == "true" ]]; then
-  RUNTIME_ENV_FILE="$ENV_FILE"
-  if [[ ! -f "$RUNTIME_ENV_FILE" ]]; then
-    : >"$RUNTIME_ENV_FILE"
+# Load per-tag release manifest to get the REVERB key baked into the pre-built frontend image.
+# Only fills in vars that have not been explicitly set via CLI.
+if [[ -z "$REVERB_APP_KEY" || -z "$REVERB_APP_ID" ]]; then
+  manifest_url="https://raw.githubusercontent.com/${REPO}/${REF}/releases/${IMAGE_TAG}.env"
+  manifest_tmp="$(mktemp)"
+  if curl -fsSL "$manifest_url" -o "$manifest_tmp" 2>/dev/null; then
+    echo "Loaded release manifest for ${IMAGE_TAG}."
+    while IFS='=' read -r key val; do
+      [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+      key="${key%%[[:space:]]*}"
+      val="${val%%[[:space:]]*}"
+      case "$key" in
+        REVERB_APP_KEY) [[ -z "$REVERB_APP_KEY" ]] && REVERB_APP_KEY="$val" ;;
+        REVERB_APP_ID)  [[ -z "$REVERB_APP_ID"  ]] && REVERB_APP_ID="$val"  ;;
+      esac
+    done <"$manifest_tmp"
+  else
+    echo "No release manifest found for ${IMAGE_TAG} — REVERB credentials will be auto-generated."
   fi
-else
-  tmp_dir="${TMPDIR:-/tmp}"
-  umask 077
-  RUNTIME_ENV_FILE="$(mktemp "${tmp_dir}/.server-monitoring-env.XXXXXX")"
+  rm -f "$manifest_tmp"
 fi
 
 if [[ -z "$PROMETHEUS_USERNAME" ]]; then
@@ -253,33 +245,25 @@ fi
 [[ -z "$REVERB_APP_KEY" ]]    && REVERB_APP_KEY="$(random_alnum 20)"
 [[ -z "$REVERB_APP_SECRET" ]] && REVERB_APP_SECRET="$(random_alnum 20)"
 
-upsert_env_var "$RUNTIME_ENV_FILE" "DOCKERHUB_USER" "$DOCKERHUB_USER"
-upsert_env_var "$RUNTIME_ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
-upsert_env_var "$RUNTIME_ENV_FILE" "APP_PORT" "$APP_PORT"
-upsert_env_var "$RUNTIME_ENV_FILE" "DOCKER_NETWORK_NAME" "$DOCKER_NETWORK_NAME"
-upsert_env_var "$RUNTIME_ENV_FILE" "APP_ENV" "$APP_ENV"
-upsert_env_var "$RUNTIME_ENV_FILE" "APP_DEBUG" "$APP_DEBUG"
-upsert_env_var "$RUNTIME_ENV_FILE" "APP_URL" "$APP_URL"
-upsert_env_var "$RUNTIME_ENV_FILE" "REVERB_APP_ID" "$REVERB_APP_ID"
-upsert_env_var "$RUNTIME_ENV_FILE" "REVERB_APP_KEY" "$REVERB_APP_KEY"
-upsert_env_var "$RUNTIME_ENV_FILE" "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
-upsert_env_var "$RUNTIME_ENV_FILE" "PROMETHEUS_USERNAME" "$PROMETHEUS_USERNAME"
-upsert_env_var "$RUNTIME_ENV_FILE" "PROMETHEUS_PASSWORD" "$PROMETHEUS_PASSWORD"
+upsert_env_var "$ENV_FILE" "DOCKERHUB_USER" "$DOCKERHUB_USER"
+upsert_env_var "$ENV_FILE" "IMAGE_TAG" "$IMAGE_TAG"
+upsert_env_var "$ENV_FILE" "APP_PORT" "$APP_PORT"
+upsert_env_var "$ENV_FILE" "DOCKER_NETWORK_NAME" "$DOCKER_NETWORK_NAME"
+upsert_env_var "$ENV_FILE" "APP_ENV" "$APP_ENV"
+upsert_env_var "$ENV_FILE" "APP_DEBUG" "$APP_DEBUG"
+upsert_env_var "$ENV_FILE" "APP_URL" "$APP_URL"
+upsert_env_var "$ENV_FILE" "REVERB_APP_ID" "$REVERB_APP_ID"
+upsert_env_var "$ENV_FILE" "REVERB_APP_KEY" "$REVERB_APP_KEY"
+upsert_env_var "$ENV_FILE" "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
+upsert_env_var "$ENV_FILE" "PROMETHEUS_USERNAME" "$PROMETHEUS_USERNAME"
+upsert_env_var "$ENV_FILE" "PROMETHEUS_PASSWORD" "$PROMETHEUS_PASSWORD"
 
-echo "Generated random credentials for this bootstrap run."
-if [[ "$SHOW_SECRETS" == "true" ]]; then
-  echo "REVERB_APP_ID=${REVERB_APP_ID}"
-  echo "REVERB_APP_KEY=${REVERB_APP_KEY}"
-  echo "REVERB_APP_SECRET=${REVERB_APP_SECRET}"
-  echo "PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME}"
-  echo "PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD}"
-else
-  echo "REVERB_APP_ID=${REVERB_APP_ID}"
-  echo "REVERB_APP_KEY=${REVERB_APP_KEY:0:4}...${REVERB_APP_KEY: -4}"
-  echo "REVERB_APP_SECRET=<hidden>"
-  echo "PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME}"
-  echo "PROMETHEUS_PASSWORD=<hidden>"
-fi
+echo "Generated credentials in ${ENV_FILE}:"
+echo "REVERB_APP_ID=${REVERB_APP_ID}"
+echo "REVERB_APP_KEY=${REVERB_APP_KEY}"
+echo "REVERB_APP_SECRET=${REVERB_APP_SECRET}"
+echo "PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME}"
+echo "PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD}"
 
 if [[ -n "$CREDENTIALS_FILE" ]]; then
   umask 077
@@ -297,20 +281,15 @@ fi
 
 if [[ "$RUN_PULL" == "true" ]]; then
   echo "Pulling images..."
-  docker compose --env-file "$RUNTIME_ENV_FILE" -f "$COMPOSE_FILE" pull
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
 fi
 
 if [[ "$RUN_UP" == "true" ]]; then
   echo "Starting services..."
-  docker compose --env-file "$RUNTIME_ENV_FILE" -f "$COMPOSE_FILE" up -d
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 fi
 
 echo "Done."
 echo "Compose file: ${COMPOSE_FILE}"
-if [[ "$PERSIST_ENV" == "true" ]]; then
-  echo "Env file persisted at: ${RUNTIME_ENV_FILE}"
-else
-  echo "Env file mode: ephemeral (not persisted to disk)"
-  echo "Tip: rerun this script before manual compose lifecycle commands requiring env interpolation."
-fi
+echo "Env file: ${ENV_FILE}"
 echo "Dashboard URL: http://localhost:${APP_PORT}"
