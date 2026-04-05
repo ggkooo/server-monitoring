@@ -33,10 +33,21 @@ services:
     restart: unless-stopped
     volumes:
       - prometheus_data:/prometheus
+    environment:
+      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
+      PROMETHEUS_PASSWORD_HASH: ${PROMETHEUS_PASSWORD_HASH:?PROMETHEUS_PASSWORD_HASH is required}
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.config.file=/etc/prometheus/web-config.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - /bin/sh
+      - -ec
+      - |
+        cat >/etc/prometheus/web-config.yml <<EOF
+        basic_auth_users:
+          ${PROMETHEUS_USERNAME}: "${PROMETHEUS_PASSWORD_HASH}"
+        EOF
+        exec /bin/prometheus \
+          --config.file=/etc/prometheus/prometheus.yml \
+          --web.config.file=/etc/prometheus/web-config.yml \
+          --storage.tsdb.path=/prometheus
     depends_on:
       - node-exporter
       - process-exporter
