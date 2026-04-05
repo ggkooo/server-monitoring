@@ -1,4 +1,65 @@
 process_names:
+  # Web servers
+  - name: "nginx"
+    cmdline:
+      - 'nginx'
+
+  - name: "apache2"
+    cmdline:
+      - 'apache2|httpd'
+
+  # Databases
+  - name: "mysql"
+    cmdline:
+      - 'mysqld'
+
+  - name: "postgres"
+    cmdline:
+      - 'postgres'
+
+  - name: "redis"
+    cmdline:
+      - 'redis-server'
+
+  - name: "mongodb"
+    cmdline:
+      - 'mongod'
+
+  # Runtimes
+  - name: "node"
+    cmdline:
+      - 'node'
+
+  - name: "php-fpm"
+    cmdline:
+      - 'php-fpm'
+
+  - name: "python"
+    cmdline:
+      - 'python3?'
+
+  - name: "java"
+    cmdline:
+      - 'java'
+
+  # Container / system agents
+  - name: "dockerd"
+    cmdline:
+      - 'dockerd'
+
+  - name: "containerd"
+    cmdline:
+      - 'containerd'
+
+  - name: "ssh"
+    cmdline:
+      - 'sshd'
+
+  - name: "cron"
+    cmdline:
+      - 'cron'
+
+  # Catch-all: every other process grouped by its executable name
   - name: "{{.Comm}}"
     cmdline:
-    - '.+'
+      - '.+'
