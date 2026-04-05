@@ -164,11 +164,15 @@ Publisher workflow:
 
 1. Login to Docker Hub:
 
-	docker login
+```bash
+docker login
+```
 
 2. Publish all images:
 
-	./scripts/dockerhub-publish.sh <dockerhub-user> v1.0.0
+```bash
+./scripts/dockerhub-publish.sh <dockerhub-user> v1.0.0
+```
 
 This publishes:
 
@@ -182,9 +186,12 @@ Consumer workflow:
 
 1. Quick download (server):
 
-	mkdir -p ~/server-monitoring && cd ~/server-monitoring
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/docker-compose.hub.yml -o docker-compose.hub.yml
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/.env.hub.example -o .env.hub
+```bash
+mkdir -p ~/server-monitoring
+cd ~/server-monitoring
+curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/docker-compose.hub.yml -o docker-compose.hub.yml
+curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/.env.hub.example -o .env.hub
+```
 
 2. Use this standard `.env.hub` example (functional baseline):
 
@@ -210,12 +217,16 @@ APP_URL=http://localhost
 
 3. Pull and run:
 
-	docker compose --env-file .env.hub -f docker-compose.hub.yml pull
-	docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
+```bash
+docker compose --env-file .env.hub -f docker-compose.hub.yml pull
+docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
+```
 
 4. Follow logs:
 
-	docker compose --env-file .env.hub -f docker-compose.hub.yml logs -f
+```bash
+docker compose --env-file .env.hub -f docker-compose.hub.yml logs -f
+```
 
 5. Open dashboard (default port 8991):
 
