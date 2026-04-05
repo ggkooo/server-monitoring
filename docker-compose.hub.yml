@@ -34,15 +34,15 @@ services:
     volumes:
       - prometheus_data:/prometheus
     environment:
-      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
-      PROMETHEUS_PASSWORD_HASH: ${PROMETHEUS_PASSWORD_HASH:?PROMETHEUS_PASSWORD_HASH is required}
+      - PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
+      - PROMETHEUS_PASSWORD_HASH
     command:
       - /bin/sh
       - -ec
       - |
         cat >/etc/prometheus/web-config.yml <<EOF
         basic_auth_users:
-          ${PROMETHEUS_USERNAME}: "${PROMETHEUS_PASSWORD_HASH}"
+          $${PROMETHEUS_USERNAME}: "$${PROMETHEUS_PASSWORD_HASH}"
         EOF
         exec /bin/prometheus \
           --config.file=/etc/prometheus/prometheus.yml \
