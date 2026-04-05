@@ -16,7 +16,6 @@ APP_DEBUG="false"
 APP_URL="http://localhost"
 PROMETHEUS_USERNAME=""
 PROMETHEUS_PASSWORD=""
-PROMETHEUS_PASSWORD_HASH=""
 REVERB_APP_ID=""
 REVERB_APP_KEY=""
 REVERB_APP_SECRET=""
@@ -46,7 +45,6 @@ Options:
   --network-name <name>    Docker network name (default: server-monitoring-network)
   --prom-user <username>   Prometheus username (default: auto-generated)
   --prom-pass <password>   Prometheus password (default: auto-generated)
-  --prom-pass-hash <hash>  Prometheus bcrypt hash (default: auto-generated from password)
   --reverb-app-id <id>     Reverb app ID (default: auto-generated)
   --reverb-app-key <key>   Reverb app key (default: auto-generated)
   --reverb-app-secret <s>  Reverb app secret (default: auto-generated)
@@ -115,10 +113,6 @@ while [[ $# -gt 0 ]]; do
       PROMETHEUS_PASSWORD="${2:?Missing value for --prom-pass}"
       shift 2
       ;;
-    --prom-pass-hash)
-      PROMETHEUS_PASSWORD_HASH="${2:?Missing value for --prom-pass-hash}"
-      shift 2
-      ;;
     --reverb-app-id)
       REVERB_APP_ID="${2:?Missing value for --reverb-app-id}"
       shift 2
@@ -175,14 +169,6 @@ random_alnum() {
 
 random_id() {
   shuf -i 100000-999999 -n 1
-}
-
-generate_bcrypt_hash() {
-  local password="$1"
-
-  # Use an ephemeral helper container to avoid host package dependencies.
-  docker run --rm --entrypoint htpasswd httpd:2.4-alpine -nbBC 12 "" "$password" \
-    | tr -d ':\n'
 }
 
 escape_sed_replacement() {
@@ -263,11 +249,6 @@ if [[ -z "$PROMETHEUS_PASSWORD" ]]; then
   PROMETHEUS_PASSWORD="$(random_alnum 24)"
 fi
 
-if [[ -z "$PROMETHEUS_PASSWORD_HASH" ]]; then
-  echo "Generating Prometheus bcrypt hash..."
-  PROMETHEUS_PASSWORD_HASH="$(generate_bcrypt_hash "$PROMETHEUS_PASSWORD")"
-fi
-
 [[ -z "$REVERB_APP_ID" ]]     && REVERB_APP_ID="$(random_id)"
 [[ -z "$REVERB_APP_KEY" ]]    && REVERB_APP_KEY="$(random_alnum 20)"
 [[ -z "$REVERB_APP_SECRET" ]] && REVERB_APP_SECRET="$(random_alnum 20)"
@@ -284,7 +265,6 @@ upsert_env_var "$RUNTIME_ENV_FILE" "REVERB_APP_KEY" "$REVERB_APP_KEY"
 upsert_env_var "$RUNTIME_ENV_FILE" "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
 upsert_env_var "$RUNTIME_ENV_FILE" "PROMETHEUS_USERNAME" "$PROMETHEUS_USERNAME"
 upsert_env_var "$RUNTIME_ENV_FILE" "PROMETHEUS_PASSWORD" "$PROMETHEUS_PASSWORD"
-upsert_env_var "$RUNTIME_ENV_FILE" "PROMETHEUS_PASSWORD_HASH" "$PROMETHEUS_PASSWORD_HASH"
 
 echo "Generated random credentials for this bootstrap run."
 if [[ "$SHOW_SECRETS" == "true" ]]; then
