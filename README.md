@@ -154,6 +154,47 @@ Prometheus web auth configuration:
 
 ## Common Operations 🧰
 
+## Docker Hub Distribution 📦
+
+You can publish prebuilt images so users only pull images and run the stack.
+
+Publisher workflow:
+
+1. Login to Docker Hub:
+
+	docker login
+
+2. Publish all images:
+
+	./scripts/dockerhub-publish.sh <dockerhub-user> <tag>
+
+This publishes:
+
+- <dockerhub-user>/server-monitoring-frontend:<tag>
+- <dockerhub-user>/server-monitoring-backend:<tag>
+- <dockerhub-user>/server-monitoring-prometheus:<tag>
+- <dockerhub-user>/server-monitoring-process-exporter:<tag>
+
+Consumer workflow:
+
+1. Download `docker-compose.hub.yml`.
+2. Create an environment file with credentials:
+
+	cp .env.hub.example .env.hub
+
+	# Edit .env.hub and set your own REVERB and PROMETHEUS credentials
+2. Run:
+
+	docker compose --env-file .env.hub -f docker-compose.hub.yml up -d
+
+3. Open dashboard (default port 8991):
+
+	http://localhost:8991
+	
+   Or use your configured `APP_PORT` from `.env.hub`:
+   
+	http://your-server-ip:${APP_PORT}
+
 ### Rebuild after changes 🔄
 
 ```bash
