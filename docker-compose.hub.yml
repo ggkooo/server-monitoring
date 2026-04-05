@@ -33,13 +33,15 @@ services:
     restart: unless-stopped
     volumes:
       - prometheus_data:/prometheus
-    environment:
-      - PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
-      - PROMETHEUS_PASSWORD_HASH
-    command:
+    entrypoint:
       - /bin/sh
       - -ec
+    environment:
+      - PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
+      - PROMETHEUS_PASSWORD_HASH_B64=${PROMETHEUS_PASSWORD_HASH_B64:?PROMETHEUS_PASSWORD_HASH_B64 is required}
+    command:
       - |
+        PROMETHEUS_PASSWORD_HASH="$(printf '%s' "$${PROMETHEUS_PASSWORD_HASH_B64}" | base64 -d)"
         cat >/etc/prometheus/web-config.yml <<EOF
         basic_auth_users:
           $${PROMETHEUS_USERNAME}: "$${PROMETHEUS_PASSWORD_HASH}"
