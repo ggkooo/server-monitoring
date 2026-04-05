@@ -1,0 +1,5 @@
+FROM ncabatoff/process-exporter:latest
+
+COPY monitoring/process-config.yml /etc/process-exporter/all.yml
+
+CMD ["-procfs=/host/proc", "-config.path=/etc/process-exporter/all.yml"]

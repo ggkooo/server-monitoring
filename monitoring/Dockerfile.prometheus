@@ -1,0 +1,4 @@
+FROM prom/prometheus:latest
+
+COPY monitoring/prometheus.yml /etc/prometheus/prometheus.yml
+COPY monitoring/web-config.yml /etc/prometheus/web-config.yml
