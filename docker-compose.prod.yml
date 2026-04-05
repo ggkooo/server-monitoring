@@ -1,0 +1,13 @@
+services:
+  edge-nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.edge
+    container_name: ggko-server-monitoring-edge-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+    networks:
+      - gb_infra

@@ -1,0 +1,140 @@
+services:
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ggko-server-monitoring-node-exporter
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.hwmon'
+    networks:
+      - gb_infra
+
+  process-exporter:
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-process-exporter:${IMAGE_TAG:-v1.0.2}
+    container_name: ggko-server-monitoring-process-exporter
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /proc:/host/proc
+    networks:
+      - gb_infra
+
+  prometheus:
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-prometheus:${IMAGE_TAG:-v1.0.2}
+    container_name: ggko-server-monitoring-prometheus
+    restart: unless-stopped
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.config.file=/etc/prometheus/web-config.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - node-exporter
+      - process-exporter
+    networks:
+      - gb_infra
+
+  backend:
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-backend:${IMAGE_TAG:-v1.0.2}
+    container_name: ggko-server-monitoring-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost}
+      BROADCAST_CONNECTION: reverb
+      METRICS_BROADCAST_CHANNEL: metrics
+      METRICS_BROADCAST_EVENT: metrics.updated
+      METRICS_BROADCAST_INTERVAL: 5
+      METRICS_CACHE_KEY: metrics.snapshot
+      METRICS_CACHE_TTL: 15
+      REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID is required}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY is required}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET is required}
+      REVERB_HOST: localhost
+      REVERB_PORT: 8080
+      REVERB_SCHEME: https
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8080
+      REVERB_SERVER_PATH: ''
+      REVERB_APP_MAX_MESSAGE_SIZE: 500000
+      REVERB_MAX_REQUEST_SIZE: 500000
+      REVERB_APP_PING_INTERVAL: 120
+      REVERB_APP_ACTIVITY_TIMEOUT: 180
+      PROMETHEUS_BASE_URL: http://prometheus:9090
+      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:?PROMETHEUS_USERNAME is required}
+      PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:?PROMETHEUS_PASSWORD is required}
+      PROMETHEUS_TIMEOUT: 5
+      PROMETHEUS_CONNECT_TIMEOUT: 2
+      PROMETHEUS_QUERY_CPU_USAGE_PERCENT: '100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)'
+      PROMETHEUS_QUERY_CPU_CORES_USAGE_PERCENT: '100 - (irate(node_cpu_seconds_total{mode="idle"}[1m]) * 100)'
+      PROMETHEUS_QUERY_CPU_IOWAIT_PERCENT: 'avg(irate(node_cpu_seconds_total{mode="iowait"}[1m])) * 100'
+      PROMETHEUS_QUERY_MEMORY_USAGE_PERCENT: '100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))'
+      PROMETHEUS_QUERY_SWAP_USAGE_PERCENT: '100 * (1 - (node_memory_SwapFree_bytes / clamp_min(node_memory_SwapTotal_bytes, 1)))'
+      PROMETHEUS_QUERY_MEMORY_CACHED_MB: 'node_memory_Cached_bytes / 1024 / 1024'
+      PROMETHEUS_QUERY_DISK_ROOT_USED_PERCENT: '100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs",fstype!="tmpfs"} * 100) / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs",fstype!="tmpfs"})'
+      PROMETHEUS_QUERY_DISK_WRITE_MB: 'sum(irate(node_disk_written_bytes_total[1m])) / 1024 / 1024'
+      PROMETHEUS_QUERY_DISK_READ_MB: 'sum(irate(node_disk_read_bytes_total[1m])) / 1024 / 1024'
+      PROMETHEUS_QUERY_NETWORK_DOWNLOAD_MB: 'sum(irate(node_network_receive_bytes_total{device!="lo"}[1m])) / 1024 / 1024'
+      PROMETHEUS_QUERY_NETWORK_UPLOAD_MB: 'sum(irate(node_network_transmit_bytes_total{device!="lo"}[1m])) / 1024 / 1024'
+      PROMETHEUS_QUERY_NETWORK_ERRORS_TOTAL: 'sum(node_network_receive_errs_total{device!="lo"}) + sum(node_network_transmit_errs_total{device!="lo"})'
+      PROMETHEUS_QUERY_UPTIME_SECONDS: 'time() - node_boot_time_seconds'
+      PROMETHEUS_QUERY_LOAD_AVERAGE_1M: node_load1
+      PROMETHEUS_QUERY_LOAD_AVERAGE_5M: node_load5
+      PROMETHEUS_QUERY_LOAD_AVERAGE_15M: node_load15
+      PROMETHEUS_QUERY_PROCESSES_RUNNING: node_procs_running
+      PROMETHEUS_QUERY_FILE_DESCRIPTORS_ALLOCATED: node_filefd_allocated
+      PROMETHEUS_QUERY_CONTEXT_SWITCHES_PER_SECOND: 'sum(irate(node_context_switches_total[1m]))'
+      PROMETHEUS_QUERY_PROCESS_LIST_ALL: namedprocess_namegroup_cpu_seconds_total
+      PROMETHEUS_QUERY_PROCESS_CPU_PERCENT: 'sum by (groupname) (irate(namedprocess_namegroup_cpu_seconds_total[1m])) * 100'
+      PROMETHEUS_QUERY_PROCESS_MEMORY_RESIDENT_BYTES: 'namedprocess_namegroup_memory_bytes{memtype="resident"}'
+      PROMETHEUS_QUERY_PROCESS_MEMORY_VIRTUAL_BYTES: 'namedprocess_namegroup_memory_bytes{memtype="virtual"}'
+      PROMETHEUS_QUERY_PROCESS_THREADS: namedprocess_namegroup_num_threads
+      PROMETHEUS_QUERY_PROCESS_DISK_READ_BYTES_PER_SECOND: 'irate(namedprocess_namegroup_read_bytes_total[1m])'
+      PROMETHEUS_QUERY_PROCESS_DISK_WRITE_BYTES_PER_SECOND: 'irate(namedprocess_namegroup_write_bytes_total[1m])'
+      PROMETHEUS_QUERY_PROCESS_CONTEXT_SWITCHES_PER_SECOND: 'irate(namedprocess_namegroup_context_switches_total[1m])'
+      PROMETHEUS_QUERY_PROCESS_OPEN_FILEDESC: namedprocess_namegroup_open_filedesc
+      PROMETHEUS_QUERY_PROCESS_UPTIME_SECONDS: 'time() - namedprocess_namegroup_oldest_start_time_seconds'
+    depends_on:
+      - prometheus
+    networks:
+      - gb_infra
+
+  frontend:
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-frontend:${IMAGE_TAG:-v1.0.2}
+    container_name: ggko-server-monitoring-frontend
+    restart: unless-stopped
+    expose:
+      - '80'
+    depends_on:
+      - backend
+    networks:
+      - gb_infra
+
+  edge-nginx:
+    image: ${DOCKERHUB_USER:-giordanoberwig}/server-monitoring-edge-nginx:${IMAGE_TAG:-v1.0.2}
+    container_name: ggko-server-monitoring-edge-nginx
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-80}:80'
+    depends_on:
+      - frontend
+    networks:
+      - gb_infra
+
+volumes:
+  prometheus_data:
+
+networks:
+  gb_infra:
+    name: ${DOCKER_NETWORK_NAME:-ggko-server-monitoring-net}
+    driver: bridge
