@@ -3,7 +3,7 @@ services:
   # ─── Node Exporter (métricas do host) ────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: server-monitoring-node-exporter
+    container_name: ggko-server-monitoring-node-exporter
     restart: unless-stopped
     privileged: true
     volumes:
@@ -17,7 +17,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.hwmon'
     networks:
-      server_monitoring_network:
+      gb_infra:
         ipv4_address: 172.18.0.25
     deploy:
       resources:
@@ -27,7 +27,7 @@ services:
   # ─── Process Exporter (métricas por processo) ─────────────────────────────────
   process-exporter:
     image: ncabatoff/process-exporter
-    container_name: server-monitoring-process-exporter
+    container_name: ggko-server-monitoring-process-exporter
     restart: unless-stopped
     privileged: true
     volumes:
@@ -37,13 +37,13 @@ services:
       - '-procfs=/host/proc'
       - '-config.path=/etc/process-exporter/all.yml'
     networks:
-      server_monitoring_network:
+      gb_infra:
         ipv4_address: 172.18.0.26
 
   # ─── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
-    container_name: server-monitoring-prometheus
+    container_name: ggko-server-monitoring-prometheus
     restart: unless-stopped
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -57,20 +57,20 @@ services:
       - node-exporter
       - process-exporter
     networks:
-      server_monitoring_network:
+      gb_infra:
         ipv4_address: 172.18.0.27
 
   # ─── Laravel Reverb (WebSocket + metrics scheduler) ──────────────────────────
   backend:
     build:
       context: ./b-server-monitoring
-    container_name: server-monitoring-backend
+    container_name: ggko-server-monitoring-backend
     env_file:
       - ./b-server-monitoring/.env
     depends_on:
       - prometheus
     networks:
-      server_monitoring_network:
+      gb_infra:
         ipv4_address: 172.18.0.28
     restart: unless-stopped
 
@@ -81,13 +81,13 @@ services:
       args:
         VITE_METRICS_WS_URL: ${VITE_METRICS_WS_URL}
         VITE_METRICS_CHANNEL: ${VITE_METRICS_CHANNEL:-metrics}
-    container_name: server-monitoring-frontend
+    container_name: ggko-server-monitoring-frontend
     expose:
       - "80"
     depends_on:
       - backend
     networks:
-      server_monitoring_network:
+      gb_infra:
         ipv4_address: 172.18.0.29
     restart: unless-stopped
 
@@ -95,6 +95,6 @@ volumes:
   prometheus_data:
 
 networks:
-  server_monitoring_network:
+  gb_infra:
     external: true
 
