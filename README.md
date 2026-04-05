@@ -179,7 +179,7 @@ Consumer workflow:
 
 1. Run a single bootstrap command:
 
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash
 
 	# It will:
 	# - download docker-compose.hub.yml
@@ -188,13 +188,13 @@ Consumer workflow:
 	# - run docker compose pull
 
 	# Optional: start containers immediately after pull
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash -s -- --up
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --up
 
 	# Optional: customize Docker Hub source and tag
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash -s -- --dockerhub-user <dockerhub-user> --image-tag v1.0.1
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --dockerhub-user <dockerhub-user> --image-tag v1.0.1
 
 	# Optional: save generated credentials to a separate local file
-	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/master/scripts/hub-bootstrap.sh | bash -s -- --credentials-file credentials.txt
+	curl -fsSL https://raw.githubusercontent.com/ggkooo/server-monitoring/main/scripts/hub-bootstrap.sh | bash -s -- --credentials-file credentials.txt
 
 	# Keep this backup file private (it contains secrets)
 
